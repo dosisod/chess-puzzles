@@ -10,7 +10,7 @@ WHITE_TILE_COLOR = 0x00597a
 BLACK_TILE_COLOR = 0x383838
 WHITE_PIECE_COLOR = 0x318eaf
 BLACK_PIECE_COLOR = 0x1e1e1e
-BORDER = 0x000000
+BORDER = BLACK_PIECE_COLOR
 
 BLACK_COLOR_FG = "\x1b[30m"
 RESET = "\x1b[0m"
@@ -132,7 +132,12 @@ def colorize_tile(x, y, c):
 
 def print_board(board):
     board = str(board)
-    out = ""
+    border_colors = (
+        COLORS.piece.as_foreground() + COLORS.border.as_background()
+    )
+
+    row_header = f"{border_colors}  a b c d e f g h  {RESET}\n"
+    out = row_header
 
     for y, row in enumerate(board.splitlines()):
         tmp = ""
@@ -140,9 +145,10 @@ def print_board(board):
         for x, col in enumerate(row.split()):
             tmp += colorize_tile(x, y, col)
 
-        out += f"{8 - y}{tmp}\n"
+        num = 8 - y
+        out += f"{border_colors}{num}{tmp}{border_colors}{num}{RESET}\n"
 
-    out += "  a b c d e f g h\n"
+    out += row_header
 
     print(out)
 
