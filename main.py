@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-
+from dataclasses import dataclass, field
+from typing import Callable
 import io
 import json
 
@@ -30,8 +30,7 @@ class Color:
 
 @dataclass
 class FlippableColor(Color):
-    def flip():
-        pass
+    flip: Callable[[], "FlippableColor"] = field(init=False)
 
     @classmethod
     def make(cls, colors):
@@ -165,6 +164,8 @@ title = puzzle["title"]
 pgn = puzzle["pgn"]
 
 game = chess.pgn.read_game(io.StringIO(pgn))
+assert game, "Could not load game"
+
 board = game.board()
 
 moves = iter(game.mainline_moves())
