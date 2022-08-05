@@ -3,6 +3,7 @@ from typing import Callable
 import io
 import json
 
+import chess
 import chess.pgn
 import requests
 
@@ -15,6 +16,11 @@ BORDER = BLACK_PIECE_COLOR
 BLACK_COLOR_FG = "\x1b[30m"
 RESET = "\x1b[0m"
 LEFT_HALF_BLOCK = "\u258c"
+RIGHT_HALF_BLOCK = "\u2590"
+
+
+def get_player_color(board: chess.Board) -> str:
+    return "white" if board.turn == chess.WHITE else "black"
 
 
 @dataclass
@@ -98,10 +104,13 @@ def is_white_piece(c):
     return c.isupper()
 
 
-def colorize_half_block(lhs: Color, rhs: Color):
+def colorize_half_block(lhs: Color | None, rhs: Color | None):
+    if not lhs:
+        return (rhs.as_foreground() if rhs else "") + RIGHT_HALF_BLOCK
+
     return (
-        lhs.as_foreground() +
-        rhs.as_background() +
+        (lhs.as_foreground() if lhs else "") +
+        (rhs.as_background() if rhs else "") +
         LEFT_HALF_BLOCK
     )
 
@@ -135,8 +144,13 @@ def print_board(board):
         COLORS.piece.as_foreground() + COLORS.border.as_background()
     )
 
-    row_header = f"{border_colors}  a b c d e f g h  {RESET}\n"
-    out = row_header
+    border_lhs_tile = colorize_half_block(None, COLORS.border)
+    border_rhs_tile = RESET + colorize_half_block(COLORS.border, None)
+
+    def add_end_caps(line: str) -> str:
+        return f"{border_lhs_tile}{border_colors}{line}{border_rhs_tile}{RESET}\n"
+
+    out = row_header = add_end_caps("  a b c d e f g h  ")
 
     for y, row in enumerate(board.splitlines()):
         tmp = ""
@@ -145,7 +159,7 @@ def print_board(board):
             tmp += colorize_tile(x, y, col)
 
         num = 8 - y
-        out += f"{border_colors}{num}{tmp}{border_colors}{num}{RESET}\n"
+        out += add_end_caps(f"{num}{tmp}{border_colors}{num}")
 
     out += row_header
 
@@ -156,7 +170,6 @@ print("""\
 Enter moves in UCI format
 ? for hint
 q to exit
-! print raw API request (debug)
 """)
 
 puzzle = requests.get("https://api.chess.com/pub/puzzle/random").json()
@@ -171,7 +184,9 @@ board = game.board()
 moves = iter(game.mainline_moves())
 move = next(moves)
 
-print(f"{title}\n")
+print(f'"{title}"\n')
+print(f"You are playing as {get_player_color(board)}\n")
+
 print_board(board)
 
 while True:
@@ -188,20 +203,22 @@ while True:
 
     elif guess == move.uci():
         board.push_san(guess)
-        next_move = next(moves, None)
+        move = next(moves, None)
 
         print("Correct!\n")
         print_board(board)
 
-        if not next_move:
+        if not move:
             input("You won! ")
             break
 
-        board.push_san(next_move.uci())
+        print(f"{get_player_color(board).title()} plays {move.uci()}")
+
+        board.push_san(move.uci())
         move = next(moves)
 
-        print(f"Black plays {next_move.uci()}")
         input("OK ")
+        print()
 
         print_board(board)
 
